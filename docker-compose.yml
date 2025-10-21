@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  okky-jobs-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: okky-jobs-frontend
+    ports:
+      - "5173:80"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-https://newbie.myds.me:8888/okky}
+    volumes:
+      # Optional: Mount logs for debugging
+      - ./logs/nginx:/var/log/nginx
+    networks:
+      - okky-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  okky-network:
+    driver: bridge
+
+volumes:
+  nginx-logs:
+    driver: local

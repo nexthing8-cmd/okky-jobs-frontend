@@ -47,7 +47,7 @@ OKKY 채용공고 크롤링 데이터를 시각적으로 조회하고 관리할 
 
 ### Base URL
 ```
-https://newbie.myds.me:8888/okky
+https://your-api-server.com/api
 ```
 
 ### 주요 엔드포인트
@@ -159,6 +159,66 @@ docker-compose ps
 
 # 이미지 재빌드
 docker-compose build --no-cache
+```
+
+## 🌐 Nginx 리버스 프록시 설정
+
+### 설정 파일 종류
+
+1. **`nginx-root-proxy.conf`** - 루트 패스 전용 (모든 요청을 프론트엔드로)
+2. **`nginx-with-api-proxy.conf`** - API 프록시 포함 (프론트엔드 + 백엔드 API)
+3. **`nginx-reverse-proxy.conf`** - 기본 설정 (API는 `/api/` 경로로)
+
+### 루트 패스 설정 (추천)
+
+```nginx
+# nginx-root-proxy.conf 사용
+upstream okky_jobs_frontend {
+    server YOUR_SERVER_IP:5173;
+}
+
+server {
+    listen 80;
+    server_name your-domain.com;
+    
+    location / {
+        proxy_pass http://okky_jobs_frontend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+### API 프록시 포함 설정
+
+```nginx
+# nginx-with-api-proxy.conf 사용
+upstream okky_jobs_frontend {
+    server YOUR_SERVER_IP:5173;
+}
+
+upstream okky_api_backend {
+    server your-api-server.com:8888;
+}
+
+server {
+    listen 80;
+    server_name your-domain.com;
+    
+    # API 요청
+    location /api/ {
+        proxy_pass https://okky_api_backend/okky/;
+        # ... CORS 설정
+    }
+    
+    # 프론트엔드 요청
+    location / {
+        proxy_pass http://okky_jobs_frontend;
+        # ... 프록시 설정
+    }
+}
 ```
 
 ## 📁 프로젝트 구조

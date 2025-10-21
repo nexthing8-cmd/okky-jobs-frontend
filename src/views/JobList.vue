@@ -122,17 +122,23 @@
         </div>
       </v-card-title>
       
-      <v-data-table
+      <v-data-table-server
+        :key="`table-${pagination.page}-${pagination.limit}-${pagination.total}`"
         :headers="headers"
         :items="jobs"
         :loading="loading"
         :items-per-page="pagination.limit"
+        :items-per-page-options="[10, 20, 50, 100]"
         :page="pagination.page"
-        :server-items-length="pagination.total"
+        :items-length="pagination.total"
         @update:page="handlePageChange"
         @update:items-per-page="handleItemsPerPageChange"
         class="elevation-0"
         item-key="id"
+        hide-default-footer
+        :footer-props="{
+          'items-per-page-text': '페이지당 항목 수:'
+        }"
       >
         <template v-slot:item.company="{ item }">
           <div class="font-weight-medium">{{ item.company }}</div>
@@ -170,8 +176,8 @@
         </template>
         
         <template v-slot:item.deadline="{ item }">
-          <span :class="getDeadlineClass(item.deadline)">
-            {{ formatDeadline(item.deadline) }}
+          <span :class="getDeadlineClass(item.deadline, item.createdAt)">
+            {{ formatDeadline(item.deadline, item.createdAt) }}
           </span>
         </template>
         
@@ -185,16 +191,46 @@
         <template v-slot:item.createdAt="{ item }">
           {{ formatDate(item.createdAt) }}
         </template>
+      </v-data-table-server>
+      
+      <!-- 커스텀 Pagination -->
+      <div class="d-flex justify-space-between align-center pa-4">
+        <div class="d-flex align-center">
+          <span class="text-body-2 mr-4">페이지당 항목 수:</span>
+          <v-select
+            v-model="pagination.limit"
+            :items="[10, 20, 50, 100]"
+            density="compact"
+            variant="outlined"
+            style="width: 80px"
+            @update:model-value="handleItemsPerPageChange"
+          ></v-select>
+        </div>
         
-        <template v-slot:item.actions="{ item }">
+        <div class="d-flex align-center">
+          <span class="text-body-2 mr-4">
+            {{ (pagination.page - 1) * pagination.limit + 1 }}-{{ Math.min(pagination.page * pagination.limit, pagination.total) }} of {{ pagination.total }}
+          </span>
+          
           <v-btn
-            icon="mdi-eye"
-            size="small"
+            icon="mdi-chevron-left"
             variant="text"
-            @click="viewJobDetail(item.id)"
+            size="small"
+            :disabled="pagination.page <= 1"
+            @click="handlePageChange(pagination.page - 1)"
           ></v-btn>
-        </template>
-      </v-data-table>
+          
+          <span class="mx-2 text-body-2">{{ pagination.page }} / {{ pagination.totalPages }}</span>
+          
+          <v-btn
+            icon="mdi-chevron-right"
+            variant="text"
+            size="small"
+            :disabled="pagination.page >= pagination.totalPages"
+            @click="handlePageChange(pagination.page + 1)"
+          ></v-btn>
+        </div>
+      </div>
     </v-card>
   </div>
 </template>
@@ -203,6 +239,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useJobStore } from '../stores/jobStore.js'
+import { formatDeadline, getDeadlineClass, formatDate } from '../utils/dateUtils.js'
 
 const router = useRouter()
 const jobStore = useJobStore()
@@ -218,7 +255,13 @@ const sortBy = ref('createdAt')
 // Computed properties
 const jobs = computed(() => jobStore.jobs)
 const loading = computed(() => jobStore.loading)
-const pagination = computed(() => jobStore.pagination)
+const pagination = computed(() => {
+  const paginationData = jobStore.pagination
+  console.log('JobList - pagination computed:', paginationData) // 디버깅용
+  console.log('JobList - total from store:', paginationData.total) // 디버깅용
+  console.log('JobList - totalPages from store:', paginationData.totalPages) // 디버깅용
+  return paginationData
+})
 
 // Filter options
 const categoryOptions = [
@@ -273,8 +316,7 @@ const headers = [
   { title: '경력', key: 'experience', sortable: false },
   { title: '마감일', key: 'deadline', sortable: false },
   { title: '조회수', key: 'views', sortable: false },
-  { title: '등록일', key: 'createdAt', sortable: false },
-  { title: '액션', key: 'actions', sortable: false, width: '80px' }
+  { title: '등록일', key: 'createdAt', sortable: false }
 ]
 
 // Methods
@@ -304,11 +346,17 @@ const clearFilters = () => {
 }
 
 const handlePageChange = (page) => {
+  console.log('Page changed to:', page) // 디버깅용
+  console.log('Current pagination before update:', jobStore.pagination) // 디버깅용
+  // 현재 limit을 유지하면서 페이지만 변경
   jobStore.updatePagination({ page })
-  jobStore.fetchJobs()
+  // updatePagination 후 fetchJobs를 호출하여 새로운 페이지 데이터를 가져옴
+  jobStore.fetchJobs({ page })
 }
 
 const handleItemsPerPageChange = (itemsPerPage) => {
+  console.log('Items per page changed to:', itemsPerPage) // 디버깅용
+  console.log('Current pagination before update:', jobStore.pagination) // 디버깅용
   jobStore.updatePagination({ limit: itemsPerPage, page: 1 })
   jobStore.fetchJobs()
 }
@@ -321,29 +369,7 @@ const viewJobDetail = (id) => {
   router.push(`/jobs/${id}`)
 }
 
-const formatDate = (dateString) => {
-  if (!dateString) return '-'
-  const date = new Date(dateString)
-  return date.toLocaleDateString('ko-KR')
-}
-
-const formatDeadline = (deadline) => {
-  if (!deadline) return '-'
-  const date = new Date(deadline)
-  return date.toLocaleDateString('ko-KR')
-}
-
-const getDeadlineClass = (deadline) => {
-  if (!deadline) return ''
-  const date = new Date(deadline)
-  const now = new Date()
-  const diffMs = date - now
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
-  
-  if (diffDays < 0) return 'text-error'
-  if (diffDays <= 3) return 'text-warning'
-  return 'text-success'
-}
+// 날짜 관련 함수들은 dateUtils.js에서 import
 
 // Watch for sort changes
 watch(sortBy, () => {
@@ -352,6 +378,8 @@ watch(sortBy, () => {
 })
 
 onMounted(() => {
+  // 초기 로드 시 현재 pagination 상태 사용
+  console.log('JobList mounted, current pagination:', jobStore.pagination)
   jobStore.fetchJobs()
 })
 </script>

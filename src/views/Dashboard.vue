@@ -42,7 +42,7 @@
             <div class="d-flex align-center">
               <v-icon color="warning" size="40" class="mr-4">mdi-clock-outline</v-icon>
               <div>
-                <div class="text-h6">{{ formatLastUpdate(stats.lastUpdate) }}</div>
+                <div class="text-h6">{{ formatRelativeTime(stats.lastUpdate) }}</div>
                 <div class="text-caption text-medium-emphasis">최근 업데이트</div>
               </div>
             </div>
@@ -110,8 +110,8 @@
               </template>
               
               <template v-slot:item.deadline="{ item }">
-                <span :class="getDeadlineClass(item.deadline)">
-                  {{ formatDeadline(item.deadline) }}
+                <span :class="getDeadlineClass(item.deadline, item.createdAt)">
+                  {{ formatDeadline(item.deadline, item.createdAt) }}
                 </span>
               </template>
               
@@ -187,6 +187,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useJobStore } from '../stores/jobStore.js'
+import { formatDeadline, getDeadlineClass, formatDate, formatRelativeTime } from '../utils/dateUtils.js'
 
 const jobStore = useJobStore()
 
@@ -197,7 +198,7 @@ const stats = ref({
   lastUpdate: null
 })
 
-const recentJobs = computed(() => jobStore.jobs.slice(0, 5))
+const recentJobs = ref([])
 const crawlingStatus = computed(() => jobStore.crawlingStatus)
 
 const recentJobsHeaders = [
@@ -209,47 +210,11 @@ const recentJobsHeaders = [
   { title: '등록일', key: 'createdAt', sortable: false }
 ]
 
-const formatDate = (dateString) => {
-  if (!dateString) return '-'
-  const date = new Date(dateString)
-  return date.toLocaleString('ko-KR', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
+// formatDate는 dateUtils.js에서 import
 
-const formatLastUpdate = (dateString) => {
-  if (!dateString) return '-'
-  const date = new Date(dateString)
-  const now = new Date()
-  const diffMs = now - date
-  const diffMins = Math.floor(diffMs / 60000)
-  
-  if (diffMins < 1) return '방금 전'
-  if (diffMins < 60) return `${diffMins}분 전`
-  if (diffMins < 1440) return `${Math.floor(diffMins / 60)}시간 전`
-  return `${Math.floor(diffMins / 1440)}일 전`
-}
+// formatLastUpdate는 formatRelativeTime으로 대체
 
-const formatDeadline = (deadline) => {
-  if (!deadline) return '-'
-  const date = new Date(deadline)
-  return date.toLocaleDateString('ko-KR')
-}
-
-const getDeadlineClass = (deadline) => {
-  if (!deadline) return ''
-  const date = new Date(deadline)
-  const now = new Date()
-  const diffMs = date - now
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
-  
-  if (diffDays < 0) return 'text-error'
-  if (diffDays <= 3) return 'text-warning'
-  return 'text-success'
-}
+// 날짜 관련 함수들은 dateUtils.js에서 import
 
 const getLogIcon = (type) => {
   switch (type) {
@@ -274,17 +239,47 @@ const executeCrawling = async () => {
 const loadDashboardData = async () => {
   loading.value = true
   try {
-    // 최근 공고 로드
-    await jobStore.fetchJobs({ limit: 5 })
+    // 전체 공고 수를 가져오기 위해 서버에서 허용하는 limit으로 요청
+    await jobStore.fetchJobs({ limit: 200 })
     
-    // 통계 데이터 로드 (실제 API가 구현되면 별도 엔드포인트 호출)
+    console.log('Dashboard - pagination after fetch:', jobStore.pagination) // 디버깅용
+    console.log('Dashboard - jobs length:', jobStore.jobs.length) // 디버깅용
+    
+    // 오늘 날짜 계산 (YYYYMMDD 형식)
+    const today = new Date()
+    const todayString = today.getFullYear().toString() + 
+                       (today.getMonth() + 1).toString().padStart(2, '0') + 
+                       today.getDate().toString().padStart(2, '0')
+    
+    console.log('Today string:', todayString) // 디버깅용
+    
+    // 통계 데이터 로드
     stats.value = {
-      totalJobs: jobStore.pagination.total || 0,
-      todayJobs: Math.floor(Math.random() * 20), // 임시 데이터
+      totalJobs: jobStore.pagination.total || jobStore.jobs.length,
+      todayJobs: jobStore.jobs.filter(job => {
+        const jobDate = new Date(job.createdAt)
+        const jobDateString = jobDate.getFullYear().toString() + 
+                             (jobDate.getMonth() + 1).toString().padStart(2, '0') + 
+                             jobDate.getDate().toString().padStart(2, '0')
+        return jobDateString === todayString
+      }).length,
       lastUpdate: new Date().toISOString()
     }
+    
+    console.log('Dashboard - stats:', stats.value) // 디버깅용
+    console.log('Today jobs count:', stats.value.todayJobs) // 디버깅용
+    
+    // 최근 공고는 5개만 표시하도록 별도로 설정
+    recentJobs.value = jobStore.jobs.slice(0, 5)
   } catch (error) {
     console.error('대시보드 데이터 로드 실패:', error)
+    // 에러 발생 시 기본값 설정
+    stats.value = {
+      totalJobs: 0,
+      todayJobs: 0,
+      lastUpdate: new Date().toISOString()
+    }
+    recentJobs.value = []
   } finally {
     loading.value = false
   }

@@ -20,16 +20,16 @@
       </v-col>
     </v-row>
 
-    <v-row v-else-if="currentJob">
+    <v-row v-else-if="currentJob && Object.keys(currentJob).length > 0">
       <!-- 기본 정보 -->
       <v-col cols="12" md="8">
         <v-card class="mb-6">
           <v-card-title class="text-h5">
-            {{ currentJob.title }}
+            {{ currentJob.title || '제목 없음' }}
           </v-card-title>
           
           <v-card-subtitle class="text-h6 text-primary">
-            {{ currentJob.company }}
+            {{ currentJob.company || '회사명 없음' }}
           </v-card-subtitle>
           
           <v-card-text>
@@ -39,7 +39,7 @@
                   <v-icon class="mr-2">mdi-tag</v-icon>
                   <span class="font-weight-medium">카테고리:</span>
                   <v-chip class="ml-2" color="primary" variant="outlined">
-                    {{ currentJob.category }}
+                    {{ currentJob.category || '미분류' }}
                   </v-chip>
                 </div>
               </v-col>
@@ -49,7 +49,7 @@
                   <v-icon class="mr-2">mdi-map-marker</v-icon>
                   <span class="font-weight-medium">지역:</span>
                   <v-chip class="ml-2" color="secondary" variant="outlined">
-                    {{ currentJob.location }}
+                    {{ currentJob.location || '지역 미상' }}
                   </v-chip>
                 </div>
               </v-col>
@@ -60,10 +60,10 @@
                   <span class="font-weight-medium">경력:</span>
                   <v-chip 
                     class="ml-2" 
-                    :color="currentJob.experience === '신입' ? 'success' : 'warning'"
+                    :color="(currentJob.experience === '신입') ? 'success' : 'warning'"
                     variant="outlined"
                   >
-                    {{ currentJob.experience }}
+                    {{ currentJob.experience || '경력 미상' }}
                   </v-chip>
                 </div>
               </v-col>
@@ -74,9 +74,9 @@
                   <span class="font-weight-medium">마감일:</span>
                   <span 
                     class="ml-2"
-                    :class="getDeadlineClass(currentJob.deadline)"
+                    :class="getDeadlineClass(currentJob.deadline, currentJob.createdAt)"
                   >
-                    {{ formatDeadline(currentJob.deadline) }}
+                    {{ formatDeadline(currentJob.deadline, currentJob.createdAt) }}
                   </span>
                 </div>
               </v-col>
@@ -213,6 +213,34 @@
         </v-alert>
       </v-col>
     </v-row>
+    
+    <!-- 데이터 없음 상태 -->
+    <v-row v-else>
+      <v-col cols="12">
+        <v-alert type="warning" variant="tonal">
+          <div>
+            <div class="text-h6 mb-2">채용공고 정보를 찾을 수 없습니다.</div>
+            <div class="text-body-2">
+              <div>• URL의 ID가 올바른지 확인해주세요</div>
+              <div>• 채용공고 목록에서 다시 시도해주세요</div>
+              <div>• 개발자 도구 콘솔에서 오류 메시지를 확인해주세요</div>
+            </div>
+          </div>
+        </v-alert>
+        
+        <v-card class="mt-4">
+          <v-card-text>
+            <div class="text-subtitle-1 mb-2">디버깅 정보:</div>
+            <div class="text-body-2">
+              <div>• 현재 작업 ID: {{ route.params.id }}</div>
+              <div>• 로딩 상태: {{ loading ? '로딩 중' : '완료' }}</div>
+              <div>• 에러: {{ error || '없음' }}</div>
+              <div>• 현재 작업: {{ currentJob ? '있음' : '없음' }}</div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
   </div>
 </template>
 
@@ -220,38 +248,25 @@
 import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useJobStore } from '../stores/jobStore.js'
+import { formatDeadline, getDeadlineClass, formatDate, formatDateTime } from '../utils/dateUtils.js'
 
 const route = useRoute()
 const router = useRouter()
 const jobStore = useJobStore()
 
-const currentJob = computed(() => jobStore.currentJob)
+const currentJob = computed(() => {
+  const job = jobStore.currentJob
+  // API 응답이 {success: true, data: {...}} 구조인 경우 data를 반환
+  if (job && job.data) {
+    return job.data
+  }
+  return job
+})
 const loading = computed(() => jobStore.loading)
 const error = computed(() => jobStore.error)
+const { setCurrentJob } = jobStore
 
-const formatDate = (dateString) => {
-  if (!dateString) return '-'
-  const date = new Date(dateString)
-  return date.toLocaleString('ko-KR')
-}
-
-const formatDeadline = (deadline) => {
-  if (!deadline) return '-'
-  const date = new Date(deadline)
-  return date.toLocaleDateString('ko-KR')
-}
-
-const getDeadlineClass = (deadline) => {
-  if (!deadline) return ''
-  const date = new Date(deadline)
-  const now = new Date()
-  const diffMs = date - now
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
-  
-  if (diffDays < 0) return 'text-error'
-  if (diffDays <= 3) return 'text-warning'
-  return 'text-success'
-}
+// 날짜 관련 함수들은 dateUtils.js에서 import
 
 const formatDescription = (text) => {
   if (!text) return ''
@@ -276,10 +291,30 @@ const shareJob = () => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   const jobId = route.params.id
+  console.log('JobDetail mounted with ID:', jobId) // 디버깅용
+  console.log('Available jobs in store:', jobStore.jobs) // 디버깅용
+  
   if (jobId) {
-    jobStore.fetchJobDetail(jobId)
+    // 먼저 현재 작업 목록에서 해당 작업을 찾아보기
+    const jobFromList = jobStore.jobs.find(job => job.id == jobId)
+    console.log('Job found in list:', jobFromList) // 디버깅용
+    
+    if (jobFromList) {
+      setCurrentJob(jobFromList)
+      console.log('Set current job from list:', jobFromList)
+    } else {
+      console.log('Job not found in list, trying API...')
+    }
+    
+    // API에서 상세 정보 가져오기
+    try {
+      await jobStore.fetchJobDetail(jobId)
+      console.log('Current job after API call:', jobStore.currentJob)
+    } catch (error) {
+      console.error('API call failed:', error)
+    }
   }
 })
 </script>

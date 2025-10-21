@@ -3,8 +3,10 @@
     <v-navigation-drawer
       v-model="drawer"
       :rail="rail"
-      permanent
+      :permanent="$vuetify.display.mdAndUp"
+      :temporary="$vuetify.display.smAndDown"
       @click="rail = false"
+      @update:model-value="onDrawerChange"
     >
       <v-list-item
         prepend-avatar="https://randomuser.me/api/portraits/men/85.jpg"
@@ -32,6 +34,7 @@
           :value="item.value"
           :to="item.to"
           :active="isActiveRoute(item.to)"
+          @click="onMenuItemClick"
         ></v-list-item>
       </v-list>
     </v-navigation-drawer>
@@ -117,6 +120,20 @@ const isActiveRoute = (path) => {
   return route.path === path
 }
 
+const onDrawerChange = (value) => {
+  // 모바일에서 사이드바가 열릴 때 rail 모드 해제
+  if (value && $vuetify.display.smAndDown) {
+    rail.value = false
+  }
+}
+
+const onMenuItemClick = () => {
+  // 모바일에서 메뉴 아이템 클릭 시 사이드바 닫기
+  if ($vuetify.display.smAndDown) {
+    drawer.value = false
+  }
+}
+
 const formatDate = (dateString) => {
   if (!dateString) return ''
   const date = new Date(dateString)
@@ -137,5 +154,31 @@ onMounted(() => {
 <style scoped>
 .v-navigation-drawer {
   border-right: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+/* 모바일에서 사이드바 오버레이 스타일 */
+@media (max-width: 959px) {
+  .v-navigation-drawer--temporary {
+    z-index: 1000;
+  }
+  
+  .v-navigation-drawer--temporary .v-list-item {
+    padding: 12px 16px;
+  }
+  
+  .v-navigation-drawer--temporary .v-list-item__prepend {
+    margin-right: 16px;
+  }
+}
+
+/* 데스크톱에서 rail 모드 스타일 */
+@media (min-width: 960px) {
+  .v-navigation-drawer--rail {
+    width: 56px !important;
+  }
+  
+  .v-navigation-drawer--rail .v-list-item__prepend {
+    margin-right: 0;
+  }
 }
 </style>

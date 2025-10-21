@@ -112,7 +112,7 @@ OKKY 채용공고 크롤링 데이터를 시각적으로 조회하고 관리할 
 
 ### Base URL
 ```
-https://newbie.myds.me:8888/okky
+https://your-api-server.com/api
 ```
 
 ### 주요 엔드포인트

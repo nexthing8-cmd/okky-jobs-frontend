@@ -37,6 +37,24 @@ export const getCrawlingStatus = async () => {
   return response.data
 }
 
+// 크롤링 로그 조회
+export const getCrawlingLogs = async () => {
+  const response = await apiClient.get('/crawl/logs')
+  return response.data
+}
+
+// 실시간 크롤링 로그 조회
+export const getRealtimeCrawlingLogs = async () => {
+  const response = await apiClient.get('/crawl/logs/realtime')
+  return response.data
+}
+
+// 크롤링 히스토리 조회
+export const getCrawlingHistory = async () => {
+  const response = await apiClient.get('/crawl/history')
+  return response.data
+}
+
 // 데이터 내보내기
 export const exportData = async (params = {}) => {
   const queryParams = new URLSearchParams(params)

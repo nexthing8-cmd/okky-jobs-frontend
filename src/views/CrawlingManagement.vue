@@ -146,10 +146,10 @@
       </v-card-title>
       
       <v-card-text>
-        <div v-if="crawlingStatus.logs && crawlingStatus.logs.length > 0">
+        <div v-if="displayLogs && displayLogs.length > 0">
           <v-timeline density="compact" side="end">
             <v-timeline-item
-              v-for="(log, index) in crawlingStatus.logs"
+              v-for="(log, index) in displayLogs"
               :key="index"
               :dot-color="getLogColor(log.type)"
               size="small"
@@ -241,10 +241,20 @@ const jobStore = useJobStore()
 
 const loadingLogs = ref(false)
 const loadingHistory = ref(false)
-const crawlingHistory = ref([])
 const refreshInterval = ref(null)
 
 const crawlingStatus = computed(() => jobStore.crawlingStatus)
+const crawlingLogs = computed(() => jobStore.crawlingLogs)
+const crawlingHistory = computed(() => jobStore.crawlingHistory)
+const realtimeLogs = computed(() => jobStore.realtimeLogs)
+const isRealtimeMode = computed(() => jobStore.isRealtimeMode)
+
+// 표시할 로그 결정 (실시간 모드면 실시간 로그, 아니면 일반 로그)
+const displayLogs = computed(() => {
+  return isRealtimeMode.value && realtimeLogs.value.length > 0 
+    ? realtimeLogs.value 
+    : crawlingLogs.value
+})
 
 const historyHeaders = [
   { title: '상태', key: 'status', sortable: false },
@@ -257,6 +267,8 @@ const historyHeaders = [
 const executeCrawling = async () => {
   try {
     await jobStore.executeCrawling()
+    // 실시간 모드 활성화
+    jobStore.isRealtimeMode = true
     // 크롤링 시작 후 상태 모니터링 시작
     startStatusMonitoring()
   } catch (error) {
@@ -272,7 +284,11 @@ const stopCrawling = () => {
 const refreshLogs = async () => {
   loadingLogs.value = true
   try {
-    await jobStore.fetchCrawlingStatus()
+    if (isRealtimeMode.value) {
+      await jobStore.fetchRealtimeLogs()
+    } else {
+      await jobStore.fetchCrawlingLogs()
+    }
   } catch (error) {
     console.error('로그 새로고침 실패:', error)
   } finally {
@@ -283,26 +299,7 @@ const refreshLogs = async () => {
 const loadCrawlingHistory = async () => {
   loadingHistory.value = true
   try {
-    // TODO: Implement crawling history API call
-    // 임시 데이터
-    crawlingHistory.value = [
-      {
-        id: 1,
-        status: '완료',
-        startedAt: new Date(Date.now() - 3600000).toISOString(),
-        endedAt: new Date(Date.now() - 3000000).toISOString(),
-        duration: 600000,
-        processed: 150
-      },
-      {
-        id: 2,
-        status: '완료',
-        startedAt: new Date(Date.now() - 7200000).toISOString(),
-        endedAt: new Date(Date.now() - 6600000).toISOString(),
-        duration: 600000,
-        processed: 120
-      }
-    ]
+    await jobStore.fetchCrawlingHistory()
   } catch (error) {
     console.error('크롤링 히스토리 로드 실패:', error)
   } finally {
@@ -317,8 +314,15 @@ const startStatusMonitoring = () => {
   
   refreshInterval.value = setInterval(async () => {
     if (crawlingStatus.value.isRunning) {
-      await jobStore.fetchCrawlingStatus()
+      // 실시간 모드면 실시간 로그 가져오기, 아니면 일반 상태만
+      if (isRealtimeMode.value) {
+        await jobStore.fetchRealtimeLogs()
+      } else {
+        await jobStore.fetchCrawlingStatus()
+      }
     } else {
+      // 크롤링이 끝나면 실시간 모드 비활성화
+      jobStore.isRealtimeMode = false
       clearInterval(refreshInterval.value)
       refreshInterval.value = null
     }
@@ -382,6 +386,7 @@ const getStatusColor = (status) => {
 
 onMounted(() => {
   jobStore.fetchCrawlingStatus()
+  jobStore.fetchCrawlingLogs()
   loadCrawlingHistory()
 })
 

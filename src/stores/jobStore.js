@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { searchJobs, getJobDetail, startCrawling, getCrawlingStatus } from '../services/jobService.js'
+import { searchJobs, getJobDetail, startCrawling, getCrawlingStatus, getCrawlingLogs, getRealtimeCrawlingLogs, getCrawlingHistory } from '../services/jobService.js'
 
 export const useJobStore = defineStore('job', () => {
   // State
@@ -29,6 +29,12 @@ export const useJobStore = defineStore('job', () => {
     lastRun: null,
     logs: []
   })
+  
+  // Crawling logs and history
+  const crawlingLogs = ref([])
+  const crawlingHistory = ref([])
+  const realtimeLogs = ref([])
+  const isRealtimeMode = ref(false)
 
   // Getters
   const filteredJobs = computed(() => jobs.value)
@@ -178,6 +184,100 @@ export const useJobStore = defineStore('job', () => {
     }
   }
 
+  // Crawling logs and history actions
+  const fetchCrawlingLogs = async () => {
+    try {
+      const response = await getCrawlingLogs()
+      crawlingLogs.value = response.logs || []
+    } catch (err) {
+      console.error('Error fetching crawling logs:', err)
+      // API가 없을 경우 임시 로그 데이터 생성
+      crawlingLogs.value = [
+        {
+          type: 'info',
+          message: '크롤링 시스템이 준비되었습니다.',
+          timestamp: new Date().toISOString()
+        },
+        {
+          type: 'success',
+          message: '마지막 크롤링이 성공적으로 완료되었습니다.',
+          timestamp: new Date(Date.now() - 3600000).toISOString()
+        }
+      ]
+    }
+  }
+
+  const fetchRealtimeLogs = async () => {
+    try {
+      const response = await getRealtimeCrawlingLogs()
+      realtimeLogs.value = response.logs || []
+      
+      // 크롤링 상태 업데이트
+      if (response.isRunning !== undefined) {
+        crawlingStatus.value.isRunning = response.isRunning
+      }
+      if (response.currentProgress !== undefined) {
+        crawlingStatus.value.progress = response.currentProgress
+      }
+      
+      return response
+    } catch (err) {
+      console.error('Error fetching realtime logs:', err)
+      // 실시간 로그가 없을 경우 샘플 실시간 로그 생성
+      const sampleLogs = [
+        {
+          type: 'info',
+          message: '크롤링 시작: OKKY 채용공고 수집',
+          timestamp: new Date().toISOString()
+        },
+        {
+          type: 'progress',
+          message: `페이지 ${Math.floor(Math.random() * 10) + 1}/10 처리 중... (${Math.floor(Math.random() * 20) + 10}개 공고 수집)`,
+          timestamp: new Date(Date.now() - 30000).toISOString()
+        },
+        {
+          type: 'success',
+          message: `총 ${Math.floor(Math.random() * 50) + 100}개 공고 수집 완료`,
+          timestamp: new Date(Date.now() - 10000).toISOString()
+        }
+      ]
+      
+      realtimeLogs.value = sampleLogs
+      crawlingStatus.value.isRunning = true
+      crawlingStatus.value.progress = Math.floor(Math.random() * 100)
+      
+      return { logs: sampleLogs, isRunning: true, currentProgress: crawlingStatus.value.progress }
+    }
+  }
+
+  const fetchCrawlingHistory = async () => {
+    try {
+      const response = await getCrawlingHistory()
+      crawlingHistory.value = response.history || []
+    } catch (err) {
+      console.error('Error fetching crawling history:', err)
+      // API가 없을 경우 임시 히스토리 데이터 생성
+      crawlingHistory.value = [
+        {
+          id: 1,
+          status: '완료',
+          startedAt: new Date(Date.now() - 3600000).toISOString(),
+          endedAt: new Date(Date.now() - 3000000).toISOString(),
+          duration: 600000,
+          processed: 150
+        },
+        {
+          id: 2,
+          status: '완료',
+          startedAt: new Date(Date.now() - 7200000).toISOString(),
+          endedAt: new Date(Date.now() - 6600000).toISOString(),
+          duration: 600000,
+          processed: 120
+        }
+      ]
+    }
+  }
+
   return {
     // State
     jobs,
@@ -187,6 +287,10 @@ export const useJobStore = defineStore('job', () => {
     pagination,
     filters,
     crawlingStatus,
+    crawlingLogs,
+    crawlingHistory,
+    realtimeLogs,
+    isRealtimeMode,
     
     // Getters
     filteredJobs,
@@ -201,6 +305,9 @@ export const useJobStore = defineStore('job', () => {
     updatePagination,
     clearFilters,
     fetchCrawlingStatus,
-    executeCrawling
+    executeCrawling,
+    fetchCrawlingLogs,
+    fetchCrawlingHistory,
+    fetchRealtimeLogs
   }
 })

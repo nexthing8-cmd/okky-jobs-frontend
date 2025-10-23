@@ -153,7 +153,7 @@ const logTypeOptions = computed(() => {
 })
 
 const goBack = () => {
-  router.push('/crawling-management')
+  router.push('/crawling')
 }
 
 const refreshLogs = async () => {

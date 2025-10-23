@@ -1,5 +1,5 @@
 <template>
-  <div class="crawling-logs-container">
+  <v-container fluid class="crawling-logs-container">
     <v-row>
       <v-col cols="12">
         <div class="d-flex align-center mb-6">
@@ -107,7 +107,7 @@
         </div>
       </v-card-text>
     </v-card>
-  </div>
+  </v-container>
 </template>
 
 <script setup>
@@ -213,6 +213,5 @@ onMounted(() => {
 .crawling-logs-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px;
 }
 </style>

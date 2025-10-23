@@ -286,7 +286,10 @@ const loadDashboardData = async () => {
 }
 
 onMounted(() => {
-  loadDashboardData()
+  console.log('Dashboard mounted, starting data load...')
+  loadDashboardData().then(() => {
+    console.log('Dashboard data loaded, jobs count:', jobStore.jobs.length)
+  })
   jobStore.fetchCrawlingStatus()
 })
 </script>

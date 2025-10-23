@@ -1,5 +1,5 @@
 # Multi-stage build for production
-FROM node:20-alpine as build-stage
+FROM node:20-alpine AS build-stage
 
 # Set working directory
 WORKDIR /app
@@ -13,11 +13,13 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build the application
+# Build the application with environment variables
+ARG VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 RUN npm run build
 
 # Production stage with Nginx
-FROM nginx:alpine as production-stage
+FROM nginx:alpine AS production-stage
 
 # Install envsubst for environment variable substitution
 RUN apk add --no-cache gettext

@@ -147,6 +147,7 @@ const formatDate = (dateString) => {
 
 onMounted(() => {
   // 크롤링 상태 초기 로드
+  console.log('App.vue mounted - Vue.js 애플리케이션이 정상적으로 로드되었습니다.')
   jobStore.fetchCrawlingStatus()
 })
 </script>

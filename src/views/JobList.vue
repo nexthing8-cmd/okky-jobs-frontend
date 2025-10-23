@@ -380,7 +380,11 @@ watch(sortBy, () => {
 onMounted(() => {
   // 초기 로드 시 현재 pagination 상태 사용
   console.log('JobList mounted, current pagination:', jobStore.pagination)
-  jobStore.fetchJobs()
+  console.log('JobList mounted, jobs length:', jobStore.jobs.length)
+  jobStore.fetchJobs().then(() => {
+    console.log('After fetchJobs, jobs length:', jobStore.jobs.length)
+    console.log('After fetchJobs, pagination:', jobStore.pagination)
+  })
 })
 </script>
 

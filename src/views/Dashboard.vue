@@ -240,7 +240,7 @@ const loadDashboardData = async () => {
   loading.value = true
   try {
     // 전체 공고 수를 가져오기 위해 서버에서 허용하는 limit으로 요청
-    await jobStore.fetchJobs({ limit: 200 })
+    await jobStore.fetchJobs({ limit: 100 })
     
     console.log('Dashboard - pagination after fetch:', jobStore.pagination) // 디버깅용
     console.log('Dashboard - jobs length:', jobStore.jobs.length) // 디버깅용

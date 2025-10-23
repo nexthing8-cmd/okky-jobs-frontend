@@ -122,14 +122,14 @@ const isActiveRoute = (path) => {
 
 const onDrawerChange = (value) => {
   // 모바일에서 사이드바가 열릴 때 rail 모드 해제
-  if (value && $vuetify.display.smAndDown) {
+  if (value && window.innerWidth < 960) {
     rail.value = false
   }
 }
 
 const onMenuItemClick = () => {
   // 모바일에서 메뉴 아이템 클릭 시 사이드바 닫기
-  if ($vuetify.display.smAndDown) {
+  if (window.innerWidth < 960) {
     drawer.value = false
   }
 }

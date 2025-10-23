@@ -30,7 +30,11 @@ COPY nginx.conf.template /etc/nginx/nginx.conf.template
 
 # Create startup script
 RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
-    echo 'envsubst < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf' >> /docker-entrypoint.sh && \
+    echo 'set -e' >> /docker-entrypoint.sh && \
+    echo 'echo "Starting nginx with API URL: $VITE_API_BASE_URL"' >> /docker-entrypoint.sh && \
+    echo 'envsubst '"'"'$VITE_API_BASE_URL'"'"' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf' >> /docker-entrypoint.sh && \
+    echo 'echo "Generated nginx config:"' >> /docker-entrypoint.sh && \
+    echo 'cat /etc/nginx/nginx.conf | grep -A 5 -B 5 proxy_pass' >> /docker-entrypoint.sh && \
     echo 'exec nginx -g "daemon off;"' >> /docker-entrypoint.sh && \
     chmod +x /docker-entrypoint.sh
 

@@ -40,19 +40,19 @@ export const getCrawlingStatus = async () => {
 // 크롤링 로그 조회
 export const getCrawlingLogs = async () => {
   const response = await apiClient.get('/crawl/logs')
-  return response.data
+  return response.data.data.logs
 }
 
 // 실시간 크롤링 로그 조회
 export const getRealtimeCrawlingLogs = async () => {
   const response = await apiClient.get('/crawl/logs/realtime')
-  return response.data
+  return response.data.data
 }
 
 // 크롤링 히스토리 조회
 export const getCrawlingHistory = async () => {
   const response = await apiClient.get('/crawl/history')
-  return response.data
+  return response.data.data.history
 }
 
 // 데이터 내보내기

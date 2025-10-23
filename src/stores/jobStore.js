@@ -188,7 +188,14 @@ export const useJobStore = defineStore('job', () => {
   const fetchCrawlingLogs = async () => {
     try {
       const response = await getCrawlingLogs()
-      crawlingLogs.value = response.logs || []
+      crawlingLogs.value = response || []
+      console.log('Fetched crawling logs:', crawlingLogs.value.length, 'items')
+      
+      // 로그에서 최신 진행률 추출
+      const progressLog = response?.find(log => log.type === 'progress' && log.progress !== null)
+      if (progressLog) {
+        crawlingStatus.value.progress = progressLog.progress
+      }
     } catch (err) {
       console.error('Error fetching crawling logs:', err)
       // API가 없을 경우 임시 로그 데이터 생성
@@ -253,7 +260,8 @@ export const useJobStore = defineStore('job', () => {
   const fetchCrawlingHistory = async () => {
     try {
       const response = await getCrawlingHistory()
-      crawlingHistory.value = response.history || []
+      crawlingHistory.value = response || []
+      console.log('Fetched crawling history:', crawlingHistory.value.length, 'items')
     } catch (err) {
       console.error('Error fetching crawling history:', err)
       // API가 없을 경우 임시 히스토리 데이터 생성

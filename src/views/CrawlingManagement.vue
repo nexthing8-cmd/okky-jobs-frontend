@@ -361,6 +361,7 @@ const getLogColor = (type) => {
     case 'error': return 'error'
     case 'warning': return 'warning'
     case 'info': return 'info'
+    case 'progress': return 'primary'
     default: return 'grey'
   }
 }
@@ -371,6 +372,7 @@ const getLogIcon = (type) => {
     case 'error': return 'mdi-alert-circle'
     case 'warning': return 'mdi-alert'
     case 'info': return 'mdi-information'
+    case 'progress': return 'mdi-progress-clock'
     default: return 'mdi-circle'
   }
 }

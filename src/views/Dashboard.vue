@@ -185,7 +185,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useJobStore } from '../stores/jobStore.js'
 import { formatDeadline, getDeadlineClass, formatDate, formatRelativeTime } from '../utils/dateUtils.js'
 
@@ -200,6 +200,7 @@ const stats = ref({
 
 const recentJobs = ref([])
 const crawlingStatus = computed(() => jobStore.crawlingStatus)
+const refreshInterval = ref(null)
 
 const recentJobsHeaders = [
   { title: '회사명', key: 'company', sortable: false },
@@ -231,9 +232,29 @@ const executeCrawling = async () => {
     // 크롤링 실행 후 상태 업데이트
     await jobStore.fetchCrawlingStatus()
     await loadDashboardData()
+    // 크롤링 시작 후 실시간 모니터링 시작
+    startStatusMonitoring()
   } catch (error) {
     console.error('크롤링 실행 실패:', error)
   }
+}
+
+const startStatusMonitoring = () => {
+  if (refreshInterval.value) {
+    clearInterval(refreshInterval.value)
+  }
+  
+  refreshInterval.value = setInterval(async () => {
+    if (crawlingStatus.value.isRunning) {
+      // 크롤링이 실행 중이면 상태와 데이터 업데이트
+      await jobStore.fetchCrawlingStatus()
+      await loadDashboardData()
+    } else {
+      // 크롤링이 끝나면 모니터링 중지
+      clearInterval(refreshInterval.value)
+      refreshInterval.value = null
+    }
+  }, 3000) // 3초마다 상태 확인 (크롤링 관리 페이지보다 조금 느리게)
 }
 
 const loadDashboardData = async () => {
@@ -291,6 +312,17 @@ onMounted(() => {
     console.log('Dashboard data loaded, jobs count:', jobStore.jobs.length)
   })
   jobStore.fetchCrawlingStatus()
+  
+  // 크롤링이 이미 실행 중이면 모니터링 시작
+  if (crawlingStatus.value.isRunning) {
+    startStatusMonitoring()
+  }
+})
+
+onUnmounted(() => {
+  if (refreshInterval.value) {
+    clearInterval(refreshInterval.value)
+  }
 })
 </script>
 

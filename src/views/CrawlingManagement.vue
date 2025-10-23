@@ -353,11 +353,24 @@ const startStatusMonitoring = () => {
   
   refreshInterval.value = setInterval(async () => {
     if (crawlingStatus.value.isRunning) {
-      // 실시간 모드면 실시간 로그 가져오기, 아니면 일반 상태만
-      if (isRealtimeMode.value) {
-        await jobStore.fetchRealtimeLogs()
-      } else {
-        await jobStore.fetchCrawlingStatus()
+      try {
+        // 실시간 로그를 통해 크롤링 상태 확인
+        const realtimeData = await jobStore.fetchRealtimeLogs()
+        
+        // 크롤링이 완료되었는지 확인
+        if (!realtimeData.isRunning) {
+          crawlingStatus.value.isRunning = false
+          jobStore.isRealtimeMode = false
+          clearInterval(refreshInterval.value)
+          refreshInterval.value = null
+        }
+      } catch (error) {
+        console.error('상태 모니터링 오류:', error)
+        // 오류 발생 시 크롤링 상태를 false로 설정
+        crawlingStatus.value.isRunning = false
+        jobStore.isRealtimeMode = false
+        clearInterval(refreshInterval.value)
+        refreshInterval.value = null
       }
     } else {
       // 크롤링이 끝나면 실시간 모드 비활성화

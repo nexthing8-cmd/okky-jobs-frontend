@@ -177,11 +177,11 @@ export const useJobStore = defineStore('job', () => {
       const response = await startCrawling()
       return response
     } catch (err) {
+      crawlingStatus.value.isRunning = false
       error.value = err.message || '크롤링 실행에 실패했습니다.'
       throw err
-    } finally {
-      crawlingStatus.value.isRunning = false
     }
+    // finally 블록 제거 - 크롤링이 성공적으로 시작되면 isRunning을 true로 유지
   }
 
   // Crawling logs and history actions

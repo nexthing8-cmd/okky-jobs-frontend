@@ -228,6 +228,15 @@ const getLogIcon = (type) => {
 
 const executeCrawling = async () => {
   try {
+    // 먼저 현재 크롤링 상태 확인
+    await jobStore.fetchCrawlingStatus()
+    
+    // 이미 크롤링이 실행 중인지 확인
+    if (crawlingStatus.value.isRunning) {
+      alert('현재 크롤링이 실행 중입니다. 잠시 후 다시 시도해주세요.')
+      return
+    }
+    
     await jobStore.executeCrawling()
     // 크롤링 실행 후 상태 업데이트
     await jobStore.fetchCrawlingStatus()
@@ -236,6 +245,7 @@ const executeCrawling = async () => {
     startStatusMonitoring()
   } catch (error) {
     console.error('크롤링 실행 실패:', error)
+    alert('크롤링 실행에 실패했습니다: ' + (error.message || '알 수 없는 오류'))
   }
 }
 
@@ -246,15 +256,35 @@ const startStatusMonitoring = () => {
   
   refreshInterval.value = setInterval(async () => {
     if (crawlingStatus.value.isRunning) {
-      // 크롤링이 실행 중이면 상태와 데이터 업데이트
-      await jobStore.fetchCrawlingStatus()
-      await loadDashboardData()
+      try {
+        // 실시간 로그를 통해 크롤링 상태 확인
+        const realtimeData = await jobStore.fetchRealtimeLogs()
+        
+        // 크롤링이 완료되었는지 확인 (isRunning이 false이거나 success 로그가 있으면)
+        if (!realtimeData.isRunning) {
+          crawlingStatus.value.isRunning = false
+          await jobStore.fetchCrawlingStatus()
+          await loadDashboardData()
+          // 크롤링 완료 시 모니터링 중지
+          clearInterval(refreshInterval.value)
+          refreshInterval.value = null
+        } else {
+          // 크롤링이 계속 진행 중이면 데이터 업데이트
+          await loadDashboardData()
+        }
+      } catch (error) {
+        console.error('상태 모니터링 오류:', error)
+        // 오류 발생 시 크롤링 상태를 false로 설정
+        crawlingStatus.value.isRunning = false
+        clearInterval(refreshInterval.value)
+        refreshInterval.value = null
+      }
     } else {
       // 크롤링이 끝나면 모니터링 중지
       clearInterval(refreshInterval.value)
       refreshInterval.value = null
     }
-  }, 3000) // 3초마다 상태 확인 (크롤링 관리 페이지보다 조금 느리게)
+  }, 3000) // 3초마다 상태 확인
 }
 
 const loadDashboardData = async () => {

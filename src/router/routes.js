@@ -2,6 +2,7 @@ import Dashboard from '../views/Dashboard.vue'
 import JobList from '../views/JobList.vue'
 import JobDetail from '../views/JobDetail.vue'
 import CrawlingManagement from '../views/CrawlingManagement.vue'
+import CrawlingLogs from '../views/CrawlingLogs.vue'
 import DataExport from '../views/DataExport.vue'
 
 export const routes = [
@@ -32,6 +33,12 @@ export const routes = [
     name: 'CrawlingManagement',
     component: CrawlingManagement,
     meta: { title: '크롤링 관리' }
+  },
+  {
+    path: '/crawling-logs',
+    name: 'CrawlingLogs',
+    component: CrawlingLogs,
+    meta: { title: '크롤링 로그 상세' }
   },
   {
     path: '/export',

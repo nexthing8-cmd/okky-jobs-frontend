@@ -135,14 +135,37 @@
         <div>
           <v-icon class="mr-2">mdi-text-box-outline</v-icon>
           크롤링 로그
+          <v-chip
+            v-if="totalLogsCount > 5"
+            size="small"
+            color="primary"
+            variant="outlined"
+            class="ml-2"
+          >
+            최근 5개 / 전체 {{ totalLogsCount }}개
+          </v-chip>
         </div>
         
-        <v-btn
-          icon="mdi-refresh"
-          variant="text"
-          @click="refreshLogs"
-          :loading="loadingLogs"
-        ></v-btn>
+        <div class="d-flex align-center">
+          <v-btn
+            v-if="totalLogsCount > 5"
+            color="primary"
+            variant="outlined"
+            size="small"
+            @click="goToLogDetail"
+            prepend-icon="mdi-eye"
+            class="mr-2"
+          >
+            상세보기
+          </v-btn>
+          
+          <v-btn
+            icon="mdi-refresh"
+            variant="text"
+            @click="refreshLogs"
+            :loading="loadingLogs"
+          ></v-btn>
+        </div>
       </v-card-title>
       
       <v-card-text>
@@ -235,9 +258,11 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useJobStore } from '../stores/jobStore.js'
 
 const jobStore = useJobStore()
+const router = useRouter()
 
 const loadingLogs = ref(false)
 const loadingHistory = ref(false)
@@ -251,9 +276,19 @@ const isRealtimeMode = computed(() => jobStore.isRealtimeMode)
 
 // 표시할 로그 결정 (실시간 모드면 실시간 로그, 아니면 일반 로그)
 const displayLogs = computed(() => {
-  return isRealtimeMode.value && realtimeLogs.value.length > 0 
+  const logs = isRealtimeMode.value && realtimeLogs.value.length > 0 
     ? realtimeLogs.value 
     : crawlingLogs.value
+  
+  // 최근 5개만 표시
+  return logs.slice(0, 5)
+})
+
+// 전체 로그 개수
+const totalLogsCount = computed(() => {
+  return isRealtimeMode.value && realtimeLogs.value.length > 0 
+    ? realtimeLogs.value.length 
+    : crawlingLogs.value.length
 })
 
 const historyHeaders = [
@@ -305,6 +340,10 @@ const loadCrawlingHistory = async () => {
   } finally {
     loadingHistory.value = false
   }
+}
+
+const goToLogDetail = () => {
+  router.push('/crawling-logs')
 }
 
 const startStatusMonitoring = () => {

@@ -54,7 +54,7 @@ OKKY 채용공고 크롤링 데이터를 시각적으로 조회하고 관리할 
 
 ### Base URL
 ```
-https://your-api-server.com/api
+https://job.your-domain.com
 ```
 
 ### 주요 엔드포인트
@@ -133,7 +133,7 @@ cp env.example .env
 2. **API URL 설정** (`.env` 파일 수정):
 ```env
 # API Configuration
-VITE_API_BASE_URL=https://your-api-server.com/api
+VITE_API_BASE_URL=https://job.your-domain.com
 
 # Environment
 VITE_NODE_ENV=production

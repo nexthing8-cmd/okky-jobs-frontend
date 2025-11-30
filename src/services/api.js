@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://your-api-server.com/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://job.your-domain.com'
 
 console.log('API Service - VITE_API_BASE_URL from env:', import.meta.env.VITE_API_BASE_URL)
 console.log('API Service - Final API_BASE_URL:', API_BASE_URL)
